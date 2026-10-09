@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sofia Rent Scanner</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eceff4; --border:#d7dce4;
+  --fg:#1a2432; --muted:#5b6675;
+  --accent:#2f63ed; --accent-fg:#ffffff; --accent-soft:#e4ecff;
+  --owner:#157a4d; --owner-bg:#e2f3ea;
+  --fee:#8a6a16; --fee-bg:#f6eed6;
+  --agency:#6b7686; --agency-bg:#eceff4;
+  --fav:#d98a00; --fav-bg:#fdf1d8; --no:#b23b4e;
+  --shadow:0 1px 2px rgba(20,30,50,.06),0 6px 20px rgba(20,30,50,.05);
+  --r:12px;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Hanken Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --border:#2a3440;
+  --fg:#e8ecf2; --muted:#9aa6b5;
+  --accent:#5e8bff; --accent-fg:#0b1018; --accent-soft:#16233d;
+  --owner:#45cf8d; --owner-bg:#102a20;
+  --fee:#dcbb5c; --fee-bg:#2a2412;
+  --agency:#93a0b0; --agency-bg:#1e2733;
+  --fav:#f0b23e; --fav-bg:#2e2510; --no:#f07a8c;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e131a; --surface:#161d27; --surface-2:#1e2733; --border:#2a3440;
+  --fg:#e8ecf2; --muted:#9aa6b5;
+  --accent:#5e8bff; --accent-fg:#0b1018; --accent-soft:#16233d;
+  --owner:#45cf8d; --owner-bg:#102a20;
+  --fee:#dcbb5c; --fee-bg:#2a2412;
+  --agency:#93a0b0; --agency-bg:#1e2733;
+  --fav:#f0b23e; --fav-bg:#2e2510; --no:#f07a8c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.45;font-size:14px}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+a{color:var(--accent)}
+h1,h2,h3{text-wrap:balance;margin:0}
+.tnum{font-variant-numeric:tabular-nums}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding-top:env(safe-area-inset-top,0px)}
+.topin{max-width:1040px;margin:0 auto;padding:12px 16px;display:flex;align-items:baseline;gap:10px 12px;flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:-.02em;font-size:1.2rem}
+.brand b{color:var(--accent)}
+.sub{color:var(--muted);font-size:.82rem;min-width:0;flex:1 1 170px}
+.themebtn{border:1px solid var(--border);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;font:600 .78rem/1 var(--sans);cursor:pointer}
+.synced{font-size:.7rem;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--agency)}
+.dot.on{background:var(--owner)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.section-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.filters{margin-top:20px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.frow{display:flex;flex-wrap:wrap;gap:18px}
+.fgroup{display:flex;flex-direction:column;gap:7px;min-width:0}
+.fgroup.grow{flex:1 1 230px}
+.lab{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lab .q{font-weight:500;text-transform:none;letter-spacing:0}
+input[type=number],input[type=search],select{font:600 .9rem var(--sans);color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:9px 10px;min-width:0;width:100%}
+input[type=number]{width:92px;font-family:var(--mono)}
+.prices{display:flex;align-items:center;gap:8px}
+.prices span{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:7px 12px;font:600 .82rem var(--sans);cursor:pointer;user-select:none}
+.chip small{font-family:var(--mono);font-weight:500;font-size:.72rem;color:var(--muted)}
+.chip input{position:absolute;opacity:0;width:0;height:0}
+.chip[data-on="1"]{background:var(--accent-soft);border-color:var(--accent)}
+.chip.src[data-on="1"][data-k="owner"]{background:var(--owner-bg);border-color:var(--owner);color:var(--owner)}
+.chip.src[data-on="1"][data-k="fee"]{background:var(--fee-bg);border-color:var(--fee);color:var(--fee)}
+.hint{font-size:.78rem;color:var(--muted)}
+.launch{margin-top:14px;padding:16px}
+.launch h2{font-size:.98rem;margin-bottom:4px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;border-radius:10px;padding:11px 15px;font:700 .86rem var(--sans);border:1px solid var(--border);background:var(--surface-2);color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn small{font-weight:500;opacity:.82}
+.groups{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.glink{font-size:.8rem;text-decoration:none;color:var(--owner);background:var(--owner-bg);border:1px solid color-mix(in srgb,var(--owner) 35%,transparent);border-radius:999px;padding:6px 11px;font-weight:600}
+.results{margin-top:22px}
+.rhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.rhead h2{font-size:1.05rem}
+.count{font-family:var(--mono);color:var(--accent);font-weight:600}
+.statusbar{display:flex;gap:6px;flex-wrap:wrap}
+.sfilter{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 11px;font:600 .78rem var(--sans);color:var(--fg);cursor:pointer}
+.sfilter[data-on="1"]{background:var(--accent-soft);border-color:var(--accent)}
+.sortsel{margin-left:auto}
+.sortsel select{width:auto;padding:7px 9px;font-size:.82rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow);position:relative}
+.card[data-st="fav"]{border-color:var(--fav);box-shadow:0 0 0 1px var(--fav) inset,var(--shadow)}
+.card[data-st="no"]{opacity:.5}
+.card .r1{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.price{font-family:var(--mono);font-weight:600;font-size:1.3rem;letter-spacing:-.01em}
+.area{font-weight:700;font-size:1rem}
+.area .cyr{color:var(--muted);font-weight:500;font-size:.82rem}
+.spec{color:var(--muted);font-size:.86rem}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.72rem;font-weight:700;border-radius:999px;padding:3px 9px;border:1px solid transparent}
+.t-owner{color:var(--owner);background:var(--owner-bg);border-color:color-mix(in srgb,var(--owner) 30%,transparent)}
+.t-fee{color:var(--fee);background:var(--fee-bg);border-color:color-mix(in srgb,var(--fee) 30%,transparent)}
+.t-agency{color:var(--agency);background:var(--agency-bg)}
+.t-commute{color:var(--muted);background:var(--surface-2)}
+.t-track{color:var(--accent);background:var(--accent-soft)}
+.t-feat{color:var(--fg);background:var(--surface-2);border-color:var(--border);font-weight:600}
+.note{font-size:.82rem;color:var(--muted)}
+.cardfoot{margin-top:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:4px}
+.go{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:700;font-size:.84rem;color:var(--accent)}
+.rate{margin-left:auto;display:inline-flex;gap:4px}
+.rate button{border:1px solid var(--border);background:var(--surface-2);color:var(--muted);width:36px;height:32px;border-radius:8px;font:700 .95rem var(--sans);cursor:pointer;line-height:1}
+.rate button[aria-pressed="true"][data-v="fav"]{background:var(--fav-bg);border-color:var(--fav);color:var(--fav)}
+.rate button[aria-pressed="true"][data-v="maybe"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.rate button[aria-pressed="true"][data-v="no"]{background:color-mix(in srgb,var(--no) 16%,transparent);border-color:var(--no);color:var(--no)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+footer{margin-top:28px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:7px;padding-bottom:env(safe-area-inset-bottom,0px)}
+footer b{color:var(--fg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topin">
+    <div class="brand">Sofia Rent <b>Scanner</b></div>
+    <div class="sub">near Slaveykov Sq · filter → open live searches → rate what you find</div>
+    <span class="synced" id="synced"><span class="dot" id="dot"></span><span id="syncedtxt">connecting…</span></span>
+    <button class="themebtn" id="themebtn" type="button">Theme</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="panel filters" aria-label="Filters">
+    <div class="frow">
+      <div class="fgroup">
+        <span class="lab">Monthly rent (€)</span>
+        <div class="prices">
+          <input type="number" id="pmin" min="0" step="25" value="0" aria-label="Min euros">
+          <span>–</span>
+          <input type="number" id="pmax" min="0" step="25" value="450" aria-label="Max euros">
+        </div>
+      </div>
+      <div class="fgroup grow">
+        <span class="lab">Type <span class="q">(hover for meaning)</span></span>
+        <div class="chips" id="rooms">
+          <label class="chip" title="едностаен = 1 room — a studio (kitchen + sleeping in one space)"><input type="checkbox" value="studio" checked>Studio <small>едностаен</small></label>
+          <label class="chip" title="двустаен = 2 rooms = 1 bedroom + living room"><input type="checkbox" value="1bed" checked>1 bed <small>двустаен</small></label>
+          <label class="chip" title="тристаен = 3 rooms = 2 bedrooms + living room"><input type="checkbox" value="2bed" checked>2 bed <small>тристаен</small></label>
+          <label class="chip" title="четиристаен = 4 rooms = 3 bedrooms + living room"><input type="checkbox" value="3bed" checked>3 bed <small>четиристаен</small></label>
+        </div>
+      </div>
+      <div class="fgroup grow">
+        <label class="lab" for="hood">Neighborhood</label>
+        <select id="hood"></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fgroup grow">
+        <span class="lab">Who's offering</span>
+        <div class="chips" id="sources">
+          <label class="chip src" data-k="owner" title="Direct from the owner — no commission"><input type="checkbox" value="owner" checked>Owner</label>
+          <label class="chip src" data-k="fee" title="States no commission"><input type="checkbox" value="fee" checked>No-fee</label>
+          <label class="chip src" data-k="agency" title="Agency — commission usually ½–1 month"><input type="checkbox" value="agency" checked>Agency</label>
+          <label class="chip src" data-k="unknown" title="Not yet confirmed"><input type="checkbox" value="unknown" checked>Unverified</label>
+        </div>
+      </div>
+      <div class="fgroup grow">
+        <span class="lab">Says in the post</span>
+        <div class="chips" id="feats"></div>
+      </div>
+      <div class="fgroup grow">
+        <label class="lab" for="q">Search the posts</label>
+        <input type="search" id="q" placeholder="e.g. terrace, lift, renovated, metro…" autocomplete="off">
+      </div>
+    </div>
+    <p class="hint" id="ownerhint" hidden>Agency hidden — OLX link set to private sellers. Facebook can't filter owners; use the owner groups below.</p>
+  </section>
+
+  <section class="panel launch" aria-label="Open live searches">
+    <h2>Open a live search with these filters</h2>
+    <p class="hint">A web page can't pull another site's live listings into itself, so these open each site's own results in a new tab with your price / type / neighborhood / owner filters applied. The <b>Found listings</b> grid below is the set I curate and tag — filter and rate those. FB prices show "BGN" but are euros.</p>
+    <div class="btns">
+      <a class="btn primary" id="go-olx" href="#" target="_blank" rel="noopener">OLX <small>largest inventory</small></a>
+      <a class="btn" id="go-bazar" href="#" target="_blank" rel="noopener">bazar.bg <small>phones shown</small></a>
+      <a class="btn" id="go-fb" href="#" target="_blank" rel="noopener">FB Marketplace <small>message in app</small></a>
+    </div>
+    <div class="section-label" style="margin-top:16px">Owner-direct Facebook groups — scroll these (phone numbers are in the post text)</div>
+    <div class="groups">
+      <a class="glink" target="_blank" rel="noopener" href="https://www.facebook.com/groups/1187417032067405/">Апартаменти от собственик · 170K</a>
+      <a class="glink" target="_blank" rel="noopener" href="https://www.facebook.com/groups/956611284504149/">…без брокери · 59K</a>
+      <a class="glink" target="_blank" rel="noopener" href="https://www.facebook.com/groups/bezbrokeri/">БЕЗ БРОКЕРИ · 45K</a>
+      <a class="glink" target="_blank" rel="noopener" href="https://www.facebook.com/groups/438225539669875/">Без посредници · 49K</a>
+    </div>
+  </section>
+
+  <section class="results">
+    <div class="rhead">
+      <h2>Found listings</h2>
+      <span class="count" id="count">0</span>
+      <div class="statusbar" id="statusbar">
+        <button class="sfilter" data-f="all" data-on="1">All</button>
+        <button class="sfilter" data-f="fav">★ Favorites</button>
+        <button class="sfilter" data-f="maybe">~ Maybe</button>
+        <button class="sfilter" data-f="unrated">Unrated</button>
+        <button class="sfilter" data-f="no">✕ Rejected</button>
+      </div>
+      <div class="sortsel">
+        <select id="sort" aria-label="Sort">
+          <option value="picks">My picks first</option>
+          <option value="price">Price ↑</option>
+          <option value="-price">Price ↓</option>
+          <option value="commute">Closest first</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Nothing matches. Loosen a filter, or use the live-search buttons above for today's full results.</div>
+  </section>
+
+  <footer>
+    <p><b>Tags:</b> <span style="color:var(--owner)">owner</span> = direct, no fee · <span style="color:var(--fee)">no fee</span> = states no commission · <span style="color:var(--agency)">agency</span> = commission likely · <span style="color:var(--agency)">unverified</span> = check the ad. Feature tags are parsed from each post's wording where stated — an absent tag means the post didn't say, not "no".</p>
+    <p><b>Rate with ★ / ~ / ✕.</b> Your marks sync live across every device through your Supabase. Add this page to your home screen to use it like an app. Snapshot of listings: 9 Oct 2026 — use the live buttons for today's results.</p>
+    <p>Reality at ≤€450: roughly 90% of Sofia listings are agencies; owner-direct is a small pool — the Facebook groups above are the best way to grow it.</p>
+  </footer>
+</div>
+
+<script>
+const SB_URL="https://hpbftklheflyplboxduo.supabase.co";
+const SB_KEY="sb_publishable_-srcAflWYZA8FvrBqxo4FA_8X-hm4G9";
+
+const EN={ "Център":"Center","Оборище":"Oborishte","Докторски паметник":"Doctor's Monument","Яворов":"Yavorov","Иван Вазов":"Ivan Vazov","НДК":"NDK",
+"Лозенец":"Lozenets","Гео Милев":"Geo Milev","Слатина":"Slatina","Медицинска академия":"Medical Academy","Хаджи Димитър":"Hadzhi Dimitar","Сухата река":"Suha Reka","Надежда":"Nadezhda","Красно село":"Krasno Selo","Хиподрума":"Hipodruma","Банишора":"Banishora","Дианабад":"Dianabad","Изток":"Iztok","Изгрев":"Izgrev","Полигона":"Poligona","Зона Б-5":"Zona B-5","Захарна фабрика":"Zaharna Fabrika",
+"Люлин":"Lyulin","Овча купел":"Ovcha Kupel","Красна поляна":"Krasna Polyana","Западен парк":"Zapaden Park","Младост":"Mladost","Мусагеница":"Musagenitsa","Студентски град":"Studentski Grad","Дружба":"Druzhba","Връбница":"Vrabnitsa","Обеля":"Obelya","Борово":"Borovo","Стрелбище":"Strelbishte","Гоце Делчев":"Gotse Delchev","Манастирски ливади":"Manastirski Livadi","Левски":"Levski","Бъкстон":"Bakston","Павлово":"Pavlovo","Дървеница":"Darvenitsa","Бенковски":"Benkovski","Витоша":"Vitosha" };
+const NB=[
+  {g:"Central · walk (≤15 min)",items:["Център","Оборище","Докторски паметник","Яворов","Иван Вазов","НДК"]},
+  {g:"Near · 15–25 min",items:["Лозенец","Гео Милев","Слатина","Медицинска академия","Хаджи Димитър","Сухата река","Надежда","Красно село","Хиподрума","Банишора","Дианабад","Изток","Изгрев","Полигона","Зона Б-5","Захарна фабрика"]},
+  {g:"Metro belt · 25–45 min",items:["Люлин","Овча купел","Красна поляна","Западен парк","Младост","Мусагеница","Студентски град","Дружба","Връбница","Обеля","Борово","Стрелбище","Гоце Делчев","Манастирски ливади","Левски","Бъкстон","Павлово","Дървеница","Бенковски","Витоша"]}
+];
+const FEATS=[{k:"furn",label:"Furnished"},{k:"sepkitchen",label:"Sep. kitchen"},{k:"nofee",label:"No fee"},{k:"pets",label:"Pets OK"},{k:"metro",label:"Near metro"},{k:"bath2",label:"2 baths"}];
+const FEATLABEL={furn:"furnished",sepkitchen:"separate kitchen",nofee:"no fee",pets:"pets OK",metro:"near metro",bath2:"2 baths"};
+const OLX="https://www.olx.bg/d/ad/";
+const L=[
+ {id:"a2f3G",p:400,area:"Западен парк",room:"1bed",size:"41 m²",tier:3,type:"owner",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"2-staen-apartament-pod-naem-zh-k-zapaden-park-CID368-IDa2f3G.html",note:"Furnished 1-bed from owner."},
+ {id:"a6Exs",p:399,area:"Гео Милев",room:"studio",size:"ателие",tier:2,type:"fee",furn:1,f:["nofee"],src:"OLX",track:"A",url:OLX+"obzavedeno-atelie-do-sky-city-bez-komisionna-CID368-IDa6Exs.html",note:"“Без комисионна” — no fee, likely owner. Near Sky City."},
+ {id:"a6BA5",p:470,area:"Гео Милев",room:"studio",size:"35 m²",tier:2,type:"owner",furn:1,f:["sepkitchen"],src:"OLX",track:"A",url:OLX+"obzaveden-ednostaen-apartament-s-otdelna-kuhnya-v-kv-geo-milev-CID368-IDa6BA5.html",note:"Separate kitchen, owner."},
+ {id:"a41yN",p:450,area:"Красно село",room:"2bed",size:"70 m²",tier:2,type:"owner",furn:0,f:[],src:"OLX",track:"A",url:OLX+"apartament-tuhla-CID368-IDa41yN.html",note:"Owner, but semi-furnished + ground floor."},
+ {id:"a6vxA",p:450,area:"Дървеница",room:"studio",size:"48 m²",tier:3,type:"owner",furn:0,f:["metro"],src:"OLX",track:"A",url:OLX+"chastno-litse-dava-pod-naem-garsionera-v-darvenitsa-48-kv-m-CID368-IDa6vxA.html",note:"Garsoniera from a private person, near M1."},
+ {id:"bz52670148",p:500,area:"Медицинска академия",room:"1bed",size:"55 m²",tier:2,type:"owner",furn:1,f:["metro"],src:"bazar",track:"A",url:"https://bazar.bg/obiava-52670148/sobstwenik-dawa-pod-naem-apartament-sofiia-meditsinska-akademiia",note:"Owner, 2 min to metro. Phone is one-click on bazar."},
+ {id:"a66NA",p:500,area:"Център",room:"studio",size:"30 m²",tier:1,type:"owner",furn:0,f:[],src:"OLX",track:"A",url:OLX+"dava-pod-naem-apartament-v-tsentara-na-sofiya-CID368-IDa66NA.html",note:"Small central studio, owner — walk to office."},
+ {id:"a6Joy",p:390,area:"Сухата река",room:"studio",size:"38 m²",tier:2,type:"agency",furn:0,f:[],src:"OLX",track:"A",url:OLX+"1-staen-apartament-v-suhata-reka-CID368-IDa6Joy.html",note:"Agency (stated in the ad). Looks ok."},
+ {id:"a60YX",p:400,area:"Сухата река",room:"studio",size:"36 m²",tier:2,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"ednostaen-apartament-v-zh-k-suhata-reka-CID368-IDa60YX.html",note:"Furnished studio."},
+ {id:"a6n85",p:400,area:"Изгрев",room:"studio",size:"28 m²",tier:2,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"ednostaen-apartament-v-zh-k-izgrev-CID368-IDa6n85.html",note:"Small studio near center-east."},
+ {id:"a0hIE",p:395,area:"Витоша",room:"studio",size:"35 m²",tier:3,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"ednostaen-apartament-pod-naem-v-kv-vitosha-CID368-IDa0hIE.html",note:"Furnished studio, south."},
+ {id:"a5Qg7",p:300,area:"Дървеница",room:"studio",size:"—",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"ednostaen-pod-naem-v-kv-darvenitsa-metrostantsiya-v-blizost-CID368-IDa5Qg7.html",note:"Cheap, metro close."},
+ {id:"a6sCO",p:400,area:"Оборище",room:"2bed",size:"65 m²",tier:1,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-oborische-CID368-IDa6sCO.html",note:"Central 2-bed. Legacy Estates."},
+ {id:"a5sxH",p:450,area:"Медицинска академия",room:"2bed",size:"—",tier:2,type:"agency",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"2-staen-v-sofiya-meditsinska-akademiya-CID368-IDa5sxH.html",note:"Agency."},
+ {id:"a5gaJ",p:400,area:"Хаджи Димитър",room:"2bed",size:"65 m²",tier:2,type:"agency",furn:0,f:["metro"],src:"OLX",track:"A",url:OLX+"2-staen-v-sofiya-hadzhi-dimitar-plosch-65-CID368-IDa5gaJ.html",note:"Unfurnished. M2 metro."},
+ {id:"a6sFL",p:399,area:"Хаджи Димитър",room:"2bed",size:"60 m²",tier:2,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-hadzhi-dimitar-CID368-IDa6sFL.html",note:"M2 metro, furnished."},
+ {id:"a6Nn8",p:450,area:"Слатина",room:"2bed",size:"65 m²",tier:2,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-slatina-CID368-IDa6Nn8.html",note:"Legacy Estates."},
+ {id:"a6No1",p:425,area:"Полигона",room:"2bed",size:"64 m²",tier:2,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-poligona-CID368-IDa6No1.html",note:"Legacy Estates."},
+ {id:"a6NBm",p:375,area:"Дианабад",room:"studio",size:"45 m²",tier:2,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"ednostaen-apartament-v-dianabad-CID368-IDa6NBm.html",note:"Legacy Estates."},
+ {id:"a6NOn",p:399,area:"Красно село",room:"2bed",size:"70 m²",tier:2,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-krasno-selo-CID368-IDa6NOn.html",note:"Agency."},
+ {id:"a5svS",p:450,area:"Хиподрума",room:"2bed",size:"61 m²",tier:2,type:"agency",furn:1,f:[],src:"OLX",track:"A",url:OLX+"2-staen-v-sofiya-hipodruma-plosch-61-CID368-IDa5svS.html",note:"Agency."},
+ {id:"a6sqr",p:375,area:"Захарна фабрика",room:"2bed",size:"—",tier:2,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-zaharna-fabrika-CID368-IDa6sqr.html",note:"West-central, tram."},
+ {id:"a6NLB",p:399,area:"Люлин",room:"2bed",size:"67 m²",tier:3,type:"agency",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-lyulin-10-CID368-IDa6NLB.html",note:"M1 metro."},
+ {id:"a6Nop",p:375,area:"Люлин",room:"2bed",size:"55 m²",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-lyulin-6-CID368-IDa6Nop.html",note:"M1 metro."},
+ {id:"a6ssC",p:399,area:"Овча купел",room:"2bed",size:"55 m²",tier:3,type:"agency",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-ovcha-kupel-CID368-IDa6ssC.html",note:"M3/M4 metro."},
+ {id:"a6NiO",p:450,area:"Овча купел",room:"2bed",size:"56 m²",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-ovcha-kupel-1-CID368-IDa6NiO.html",note:"M3/M4 metro."},
+ {id:"a6ND4",p:350,area:"Младост",room:"studio",size:"36 m²",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"ednostaen-apartament-v-mladost-4-CID368-IDa6ND4.html",note:"M1 metro."},
+ {id:"a6ste",p:449,area:"Младост",room:"2bed",size:"76 m²",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-mladost-3-CID368-IDa6ste.html",note:"Big 2-bed, M1 metro."},
+ {id:"a6NBE",p:450,area:"Дружба",room:"2bed",size:"68 m²",tier:3,type:"unknown",furn:1,f:["metro"],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-druzhba-1-CID368-IDa6NBE.html",note:"M4 metro straight to center."},
+ {id:"a6i1v",p:450,area:"Зона Б-5",room:"2bed",size:"70 m²",tier:2,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-zh-k-zona-b-5-CID368-IDa6i1v.html",note:"West-central."},
+ {id:"a6NMr",p:450,area:"Гоце Делчев",room:"2bed",size:"60 m²",tier:3,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-gotse-delchev-CID368-IDa6NMr.html",note:"South."},
+ {id:"a6Niq",p:375,area:"Бенковски",room:"2bed",size:"50 m²",tier:3,type:"unknown",furn:1,f:[],src:"OLX",track:"A",url:OLX+"dvustaen-apartament-v-benkovski-CID368-IDa6Niq.html",note:"Far north, bus."},
+ {id:"a2CyY",p:640,area:"Лозенец",room:"2bed",size:"90 m²",tier:2,type:"owner",furn:1,f:[],src:"OLX",track:"B",url:OLX+"tristaen-apartament-v-tsentara-na-sofiya-pod-naem-CID368-IDa2CyY.html",note:"Furnished, owner, central — strong price. Likely 1 bath."},
+ {id:"a18yI",p:650,area:"Банишора",room:"2bed",size:"80 m²",tier:2,type:"owner",furn:1,f:[],src:"OLX",track:"B",url:OLX+"tristaen-apartament-ot-sobstvenik-CID368-IDa18yI.html",note:"Furnished, owner."},
+ {id:"a5X8w",p:800,area:"Мусагеница",room:"2bed",size:"77 m²",tier:3,type:"owner",furn:1,f:["sepkitchen","pets","metro"],src:"OLX",track:"B",url:OLX+"dava-pod-naem-3-staen-s-domashen-lyubimets-musagenitsa-CID368-IDa5X8w.html",note:"Two separate bedrooms + separate kitchen, M1 metro, pets OK."},
+ {id:"a5Mg1",p:779,area:"Павлово",room:"2bed",size:"—",tier:3,type:"owner",furn:1,f:[],src:"OLX",track:"B",url:OLX+"ot-sobstvenik-tristaen-neprehoden-pod-naem-v-pavlovo-CID368-IDa5Mg1.html",note:"Owner, non-through rooms."},
+ {id:"fb939406512577383",p:750,area:"Sofia (area TBC)",room:"2bed",size:"2 baths",tier:3,type:"unknown",furn:1,f:["bath2"],src:"FB",track:"B",url:"https://www.facebook.com/marketplace/item/939406512577383/",note:"The explicit 2-bed / 2-BATH lead. Confirm area in FB."},
+ {id:"fb1045502258542818",p:750,area:"Център",room:"2bed",size:"70 m²",tier:1,type:"agency",furn:1,f:[],src:"FB",track:"B",url:"https://www.facebook.com/marketplace/item/1045502258542818/",note:"Central, but has a property code (likely agency)."},
+ {id:"fb1516285160264623",p:800,area:"Център",room:"2bed",size:"—",tier:1,type:"unknown",furn:1,f:[],src:"FB",track:"B",url:"https://www.facebook.com/marketplace/item/1516285160264623/",note:"Central 2-bed. Confirm seller in FB."}
+];
+const SEED={a6Exs:"fav",a6Joy:"maybe",a2f3G:"no",a6sCO:"no",a6ssC:"no",a6NLB:"no"};
+
+const $=s=>document.querySelector(s);
+const roomWord={studio:"едностаен","1bed":"двустаен","2bed":"тристаен","3bed":"четиристаен"};
+const roomEN={studio:"Studio","1bed":"1 bed","2bed":"2 bed","3bed":"3 bed"};
+const tierLabel={1:"Central · walk",2:"Near · 15–25m",3:"Metro belt · 25–45m"};
+
+(function(){const sel=$("#hood");sel.innerHTML='<option value="">Any neighborhood</option>';
+ NB.forEach(gr=>{const og=document.createElement("optgroup");og.label=gr.g;gr.items.forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n+(EN[n]?" ("+EN[n]+")":"");og.appendChild(o);});sel.appendChild(og);});})();
+(function(){const c=$("#feats");FEATS.forEach(ft=>{const l=document.createElement("label");l.className="chip";l.innerHTML='<input type="checkbox" value="'+ft.k+'">'+ft.label;c.appendChild(l);});})();
+
+// ---------- ratings: Supabase-synced, localStorage cache ----------
+let ratings={}, sb=null, seeded=false;
+function loadLocal(){try{ratings=JSON.parse(localStorage.getItem("srs-ratings")||"null")||{...SEED};}catch(e){ratings={...SEED};}}
+function saveLocal(){try{localStorage.setItem("srs-ratings",JSON.stringify(ratings));}catch(e){}}
+function markSynced(s){const d=$("#dot"),t=$("#syncedtxt");if(s==="on"){d.classList.add("on");t.textContent="synced";}else if(s==="off"){d.classList.remove("on");t.textContent="offline (saved here)";}else{t.textContent="connecting…";}}
+async function pull(){
+  if(!sb)return;
+  const {data,error}=await sb.from("ratings").select("key,status");
+  if(error){markSynced("off");return;}
+  const m={};data.forEach(r=>{if(r.status)m[r.key]=r.status;});
+  ratings=m;saveLocal();markSynced("on");render();
+  if(!seeded&&data.length===0&&Object.keys(SEED).length){
+    seeded=true;
+    const rows=Object.entries(SEED).map(([key,status])=>({key,status}));
+    await sb.from("ratings").upsert(rows);
+    ratings={...SEED};saveLocal();render();
+  }
+}
+async function setRating(id,v){
+  const cur=ratings[id];const nv=cur===v?null:v;
+  if(nv)ratings[id]=nv;else delete ratings[id];
+  saveLocal();render();
+  if(!sb)return;
+  try{
+    if(nv)await sb.from("ratings").upsert({key:id,status:nv,updated_at:new Date().toISOString()});
+    else await sb.from("ratings").delete().eq("key",id);
+  }catch(e){markSynced("off");}
+}
+function initSync(){
+  loadLocal();render();
+  try{
+    if(!window.supabase||!window.supabase.createClient){markSynced("off");return;}
+    sb=window.supabase.createClient(SB_URL,SB_KEY);
+    pull();
+    sb.channel("ratings-rt").on("postgres_changes",{event:"*",schema:"public",table:"ratings"},payload=>{
+      if(payload.eventType==="DELETE"){if(payload.old&&payload.old.key)delete ratings[payload.old.key];}
+      else if(payload.new){if(payload.new.status)ratings[payload.new.key]=payload.new.status;else delete ratings[payload.new.key];}
+      saveLocal();render();
+    }).subscribe();
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)pull();});
+    window.addEventListener("focus",pull);
+  }catch(e){markSynced("off");}
+}
+
+function readFilters(){
+  return{pmin:+$("#pmin").value||0,pmax:+$("#pmax").value||1e9,
+    rooms:[...document.querySelectorAll("#rooms input:checked")].map(i=>i.value),
+    hood:$("#hood").value,
+    sources:[...document.querySelectorAll("#sources input:checked")].map(i=>i.value),
+    feats:[...document.querySelectorAll("#feats input:checked")].map(i=>i.value),
+    q:$("#q").value.trim().toLowerCase(),
+    sort:$("#sort").value,status:document.querySelector('.sfilter[data-on="1"]').dataset.f};
+}
+function applySaved(){try{const s=JSON.parse(localStorage.getItem("srs-filt")||"{}");
+  if(s.pmin!=null)$("#pmin").value=s.pmin;if(s.pmax!=null)$("#pmax").value=s.pmax;
+  if(s.hood)$("#hood").value=s.hood;
+  if(s.rooms)document.querySelectorAll("#rooms input").forEach(i=>i.checked=s.rooms.includes(i.value));
+  if(s.sources)document.querySelectorAll("#sources input").forEach(i=>i.checked=s.sources.includes(i.value));
+  if(s.feats)document.querySelectorAll("#feats input").forEach(i=>i.checked=s.feats.includes(i.value));
+  if(s.q)$("#q").value=s.q;if(s.sort)$("#sort").value=s.sort;}catch(e){}}
+function saveFilters(f){try{localStorage.setItem("srs-filt",JSON.stringify(f));}catch(e){}}
+
+function hasFeat(it,k){if(k==="furn")return !!it.furn;if(k==="nofee")return it.type==="fee"||(it.f||[]).includes("nofee");return (it.f||[]).includes(k);}
+function enc(s){return encodeURIComponent(s);}
+function buildLinks(f){
+  const oneRoom=f.rooms.length===1?roomWord[f.rooms[0]]:"";
+  const q=[oneRoom,f.hood].filter(Boolean).join(" ").trim();
+  const ownerMode=f.sources.length>0&&f.sources.every(s=>s==="owner"||s==="fee");
+  let olx="https://www.olx.bg/nedvizhimi-imoti/naemi/apartamenti/sofiya/";
+  if(q)olx+="q-"+enc(q).replace(/%20/g,"-")+"/";
+  const op=["search%5Border%5D=created_at%3Adesc"];
+  if(f.pmax<1e9)op.push("search%5Bfilter_float_price%3Ato%5D="+f.pmax);
+  if(f.pmin>0)op.push("search%5Bfilter_float_price%3Afrom%5D="+f.pmin);
+  if(ownerMode)op.push("search%5Bprivate_business%5D=private");
+  $("#go-olx").href=olx+"?"+op.join("&");
+  $("#go-bazar").href="https://bazar.bg/obiavi?q="+enc([oneRoom,f.hood,"под наем","София"].filter(Boolean).join(" "));
+  let fb="https://www.facebook.com/marketplace/sofia/search?query="+enc([f.hood,oneRoom,"наем"].filter(Boolean).join(" ")||"апартамент наем")+"&sortBy=creation_time_descend";
+  if(f.pmax<1e9)fb+="&maxPrice="+f.pmax;if(f.pmin>0)fb+="&minPrice="+f.pmin;
+  $("#go-fb").href=fb;
+  $("#ownerhint").hidden=!ownerMode;
+}
+function hay(it){return [EN[it.area]||"",it.area,it.note,roomEN[it.room],it.src,it.type,(it.f||[]).map(k=>FEATLABEL[k]).join(" ")].join(" ").toLowerCase();}
+function matchFilter(it,f){
+  if(it.p<f.pmin||it.p>f.pmax)return false;
+  if(f.rooms.length&&!f.rooms.includes(it.room))return false;
+  if(f.hood&&!it.area.includes(f.hood))return false;
+  if(f.sources.length&&!f.sources.includes(it.type))return false;
+  if(f.feats.length&&!f.feats.every(k=>hasFeat(it,k)))return false;
+  if(f.q){const h=hay(it);if(!f.q.split(/\s+/).every(t=>h.includes(t)))return false;}
+  const st=ratings[it.id]||"";
+  if(f.status==="fav"&&st!=="fav")return false;
+  if(f.status==="maybe"&&st!=="maybe")return false;
+  if(f.status==="no"&&st!=="no")return false;
+  if(f.status==="unrated"&&st)return false;
+  return true;
+}
+function tagHTML(t){return t==="owner"?'<span class="tag t-owner">owner · no fee</span>':t==="fee"?'<span class="tag t-fee">no fee</span>':t==="agency"?'<span class="tag t-agency">agency</span>':'<span class="tag t-agency">unverified</span>';}
+const order={fav:0,maybe:1,"":2,no:3};
+function render(){
+  const f=readFilters();buildLinks(f);saveFilters(f);
+  let list=L.filter(it=>matchFilter(it,f));
+  list.sort((a,b)=>f.sort==="price"?a.p-b.p:f.sort==="-price"?b.p-a.p:f.sort==="commute"?((a.tier-b.tier)||(a.p-b.p)):((order[ratings[a.id]||""]-order[ratings[b.id]||""])||(a.p-b.p)));
+  $("#count").textContent=list.length+(list.length===1?" match":" matches");
+  const g=$("#grid");g.innerHTML="";$("#empty").hidden=list.length>0;
+  list.forEach(it=>{
+    const st=ratings[it.id]||"";
+    const el=document.createElement("article");el.className="card";if(st)el.dataset.st=st;
+    const areaEN=EN[it.area]||it.area;const cyr=EN[it.area]?' <span class="cyr">'+it.area+'</span>':'';
+    const feats=(it.f||[]).map(k=>'<span class="tag t-feat">'+FEATLABEL[k]+'</span>').join("");
+    el.innerHTML=
+      '<div class="r1"><span class="price tnum">€'+it.p+'</span><span class="area">'+areaEN+cyr+'</span></div>'+
+      '<div class="spec tnum">'+roomEN[it.room]+' · '+it.size+' · '+it.src+(it.furn?' · furnished':'')+'</div>'+
+      '<div class="tags"><span class="tag t-track">Track '+it.track+'</span>'+tagHTML(it.type)+'<span class="tag t-commute">'+tierLabel[it.tier]+'</span>'+feats+'</div>'+
+      '<div class="note">'+it.note+'</div>'+
+      '<div class="cardfoot"><a class="go" href="'+it.url+'" target="_blank" rel="noopener">Open listing →</a>'+
+      '<span class="rate">'+
+        '<button data-v="fav" aria-pressed="'+(st==="fav")+'" title="Favorite">★</button>'+
+        '<button data-v="maybe" aria-pressed="'+(st==="maybe")+'" title="Maybe">~</button>'+
+        '<button data-v="no" aria-pressed="'+(st==="no")+'" title="Reject">✕</button>'+
+      '</span></div>';
+    el.querySelectorAll(".rate button").forEach(b=>b.addEventListener("click",()=>setRating(it.id,b.dataset.v)));
+    g.appendChild(el);
+  });
+}
+function syncChips(){document.querySelectorAll("#rooms .chip,#sources .chip,#feats .chip").forEach(c=>c.dataset.on=c.querySelector("input").checked?"1":"0");}
+
+$("#statusbar").addEventListener("click",e=>{const b=e.target.closest(".sfilter");if(!b)return;document.querySelectorAll(".sfilter").forEach(x=>x.dataset.on="0");b.dataset.on="1";render();});
+(function(){const root=document.documentElement,b=$("#themebtn");
+ const cur=()=>root.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+ b.addEventListener("click",()=>{const n=cur()==="dark"?"light":"dark";root.setAttribute("data-theme",n);try{localStorage.setItem("srs-theme",n);}catch(e){}});
+ try{const t=localStorage.getItem("srs-theme");if(t)root.setAttribute("data-theme",t);}catch(e){}})();
+document.addEventListener("input",e=>{if(e.target.closest(".filters")){syncChips();render();}});
+applySaved();syncChips();initSync();
+</script>
+</body>
+</html>
